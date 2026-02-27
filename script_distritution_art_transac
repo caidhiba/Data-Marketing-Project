@@ -1,0 +1,63 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# --- 1. CHARGEMENT ET PRÉPARATION ---
+# On charge votre fichier de transactions (ajustez le nom si besoin)
+df_trans = pd.read_csv('transactions.csv')
+
+# On s'assure que customer_id est bien reconnu
+df_trans['customer_id'] = pd.to_numeric(df_trans['customer_id'], errors='coerce')
+df_trans = df_trans.dropna(subset=['customer_id', 'product_code'])
+
+# --- 2. CALCUL DES ARTICLES/CATÉGORIES DISTINCTS ---
+# Le "nunique()" permet de compter combien de "product_code" différents ont été achetés par chaque client
+categories_par_client = df_trans.groupby('customer_id')['product_code'].nunique().reset_index()
+categories_par_client.rename(columns={'product_code': 'n_categories'}, inplace=True)
+
+# Pour la lisibilité du graphique, on exclut le top 5% des clients (les gros acheteurs)
+q_cat = categories_par_client['n_categories'].quantile(0.95)
+df_plot = categories_par_client[categories_par_client['n_categories'] <= q_cat]
+
+
+# --- 3. CRÉATION DU GRAPHIQUE (Histogramme) ---
+plt.figure(figsize=(10, 6))
+
+# Histogramme en BLEU CIEL avec des contours en VIOLET
+plt.hist(
+    df_plot['n_categories'], bins=15, 
+    color='skyblue', edgecolor='purple', alpha=0.8
+)
+
+# Moyenne et Médiane en ROSE
+moyenne_cat = df_plot['n_categories'].mean()
+mediane_cat = df_plot['n_categories'].median()
+
+plt.axvline(moyenne_cat, color='hotpink', linestyle='dashed', linewidth=2.5, 
+            label=f'Moyenne ({moyenne_cat:.1f} articles distincts)')
+plt.axvline(mediane_cat, color='hotpink', linestyle='dotted', linewidth=2.5, 
+            label=f'Médiane ({mediane_cat:.1f} articles distincts)')
+
+# Titres et labels en VIOLET
+plt.title(
+    "Distribution du Nombre d'Articles Distincts par Client\n(Sous le 95e percentile)", 
+    fontsize=15, pad=15, color='purple', fontweight='bold'
+)
+plt.xlabel("Nombre de types d'articles achetés", fontsize=12, color='purple')
+plt.ylabel("Nombre de Clients", fontsize=12, color='purple')
+
+# Grille et axes en VIOLET clair
+plt.grid(True, linestyle='--', alpha=0.3, color='purple')
+
+ax = plt.gca()
+ax.tick_params(colors='purple')
+for spine in ax.spines.values():
+    spine.set_color('purple')
+
+# Légende
+plt.legend(loc='upper right', frameon=True, labelcolor='purple')
+
+# Sauvegarde de l'image
+plt.savefig('distribution_articles_colors.png', bbox_inches='tight', dpi=150)
+plt.close()
+
+print("Graphique sauvegardé sous le nom 'distribution_articles_colors.png'.")
