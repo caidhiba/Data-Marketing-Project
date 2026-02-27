@@ -18,51 +18,56 @@ cond_dates = (df['first_purchase'] <= df['last_purchase']) | df['first_purchase'
 cond_recence = (df['recency_days'] <= df['tenure_days']) | df['recency_days'].isna()
 cond_montants = (df['total_spent'] >= df['avg_basket']) | df['total_spent'].isna()
 
-df_clean = df[cond_dates & cond_recence & cond_montants].dropna(subset=['recency_days', 'total_spent']).copy()
+# Récupération des données propres (en enlevant les valeurs manquantes sur nos 2 colonnes cibles)
+df_clean = df[cond_dates & cond_recence & cond_montants].dropna(subset=['n_orders', 'avg_basket']).copy()
 
-# On ne garde que les 95% des valeurs normales pour la lisibilité
-q_spent = df_clean['total_spent'].quantile(0.95)
-df_plot = df_clean[df_clean['total_spent'] <= q_spent]
+# On filtre les valeurs extrêmes (au-delà du 95e percentile) pour un graphique lisible
+q_orders = df_clean['n_orders'].quantile(0.95)
+q_basket = df_clean['avg_basket'].quantile(0.95)
+df_plot = df_clean[(df_clean['n_orders'] <= q_orders) & (df_clean['avg_basket'] <= q_basket)]
 
-# Calcul de la corrélation
-correlation = df_clean['recency_days'].corr(df_clean['total_spent'])
+# Calcul du coefficient de corrélation
+correlation = df_clean['n_orders'].corr(df_clean['avg_basket'])
+
 
 # --- 2. CRÉATION DU GRAPHIQUE ---
 plt.figure(figsize=(10, 6))
 
 # Nuage de points en BLEU CIEL
 plt.scatter(
-    df_plot['recency_days'], df_plot['total_spent'], 
+    df_plot['n_orders'], df_plot['avg_basket'], 
     alpha=0.4, color='skyblue', edgecolors='none', s=20
 )
 
 # Ligne de tendance en ROSE
-z = np.polyfit(df_plot['recency_days'], df_plot['total_spent'], 1)
+z = np.polyfit(df_plot['n_orders'], df_plot['avg_basket'], 1)
 p = np.poly1d(z)
 plt.plot(
-    df_plot['recency_days'], p(df_plot['recency_days']), 
+    df_plot['n_orders'], p(df_plot['n_orders']), 
     color='hotpink', linestyle='--', linewidth=2.5, label="Tendance"
 )
 
-# Titres et labels en VIOLET
+# Textes et Labels en VIOLET
 plt.title(
-    f"Corrélation entre la Récence et le Montant Dépensé\nCoefficient : {correlation:.2f}", 
+    f"Fréquence vs Panier Moyen\nCoefficient de corrélation : {correlation:.2f}", 
     fontsize=14, pad=15, color='purple', fontweight='bold'
 )
-plt.xlabel("Récence (Jours depuis le dernier achat)", fontsize=12, color='purple')
-plt.ylabel("Montant Total Dépensé (€)", fontsize=12, color='purple')
+plt.xlabel("Fréquence (Nombre de commandes)", fontsize=12, color='purple')
+plt.ylabel("Panier Moyen (€)", fontsize=12, color='purple')
 
-# Grille et axes en VIOLET léger
+# Grille et contours en VIOLET clair
 plt.grid(True, linestyle='--', alpha=0.3, color='purple')
 
-ax = plt.gca() # Récupère l'axe actuel
-ax.tick_params(colors='purple') # Chiffres de l'axe X et Y
+ax = plt.gca()
+ax.tick_params(colors='purple')
 for spine in ax.spines.values():
-    spine.set_color('purple') # Cadre autour du graphe
+    spine.set_color('purple')
 
 # Légende
 plt.legend(loc='upper right', frameon=True, labelcolor='purple')
 
 # Sauvegarde de l'image
-plt.savefig('correlation_recency_spent_colors.png', bbox_inches='tight', dpi=150)
+plt.savefig('frequency_vs_basket_colors.png', bbox_inches='tight', dpi=150)
 plt.close()
+
+print(f"Graphique sauvegardé avec succès. Corrélation calculée : {correlation:.4f}")
